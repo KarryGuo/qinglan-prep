@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: qinglan-prep
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: npx prisma db push --skip-generate && npx tsx prisma/seed.ts && npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://dashscope.aliyuncs.com/compatible-mode/v1
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: qwen-plus
+      - key: DEMO_MODE
+        value: "true"

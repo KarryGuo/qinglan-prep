@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("TURSO_DATABASE_URL")
+}
+
+model Teacher {
+  id       String        @id @default(cuid())
+  name     String
+  prefs    Json?
+  lessons  Lesson[]
+  memories ClassMemory[]
+}
+
+model ClassMemory {
+  id        String   @id @default(cuid())
+  teacherId String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+  className String
+  profile   Json // { weakPoints:[{name,severity,evidence,updatedAt}], resolved:[...] }
+  lessons   Lesson[]
+  updatedAt DateTime @updatedAt
+}
+
+model Lesson {
+  id             String       @id @default(cuid())
+  teacherId      String
+  teacher        Teacher      @relation(fields: [teacherId], references: [id])
+  classMemoryId  String?
+  classMemory    ClassMemory? @relation(fields: [classMemoryId], references: [id])
+  subject        String
+  grade          String
+  textbook       String
+  title          String
+  classDesc      String
+  status         String       @default("diagnose")
+  profileJson    Json? // diagnose 产物
+  designJson     Json? // design 产物
+  packageJson    Json? // generate 产物
+  reflectionJson Json? // 最近一次 reflect 产物
+  citations      Citation[]
+  events         RunEvent[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Citation {
+  id       String @id @default(cuid())
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id])
+  stage    String
+  citeType String // curriculum | textbook | classdata | teacher
+  ref      String // 人读引用，如"课标·第三学段·阅读与鉴赏"
+  sourceId String // 知识表主键；teacher 类型为空
+  snippet  String
+}
+
+model RunEvent {
+  id        String   @id @default(cuid())
+  lessonId  String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id])
+  stage     String
+  kind      String
+  payload   Json
+  createdAt DateTime @default(now())
+}
+
+model CurriculumClause {
+  id      String @id
+  subject String
+  stage   String // 学段，如"3-4年级"
+  code    String // 如"语文·3-4年级·阅读与鉴赏·2"
+  text    String
+}
+
+model TextbookNode {
+  id            String @id
+  subject       String
+  grade         String
+  volume        String
+  lessonTitle   String
+  keyPoints     Json // string[]
+  prerequisites Json // string[]
+  commonErrors  Json // string[]
+}
+
+model Question {
+  id             String @id
+  subject        String
+  grade          String
+  knowledgePoint String
+  tier           String // basic | advanced | extension
+  text           String
+  answer         String
+}
