@@ -8,7 +8,9 @@
 
 ## 在线体验
 
-> 部署后填入 Render 在线地址。
+https://qinglan-prep.onrender.com
+
+> Render 免费档实例空闲约 15 分钟后会休眠，首次访问需等待约 1 分钟冷启动。
 
 ## 快速开始
 
