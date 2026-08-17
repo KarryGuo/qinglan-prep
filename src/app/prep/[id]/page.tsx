@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { consumeSse, type SseEvent } from "@/lib/sse";
+import { StageOutputCard } from "@/components/StageOutputCard";
 
 type Lesson = {
   id: string;
@@ -145,7 +146,7 @@ export default function LessonFlowPage() {
 
   if (!lesson) {
     return (
-      <main className="mx-auto max-w-5xl px-4 py-10 text-sm text-slate-500">
+      <main className="mx-auto max-w-5xl px-4 py-10 text-sm text-chalk-400">
         加载中…
       </main>
     );
@@ -159,7 +160,7 @@ export default function LessonFlowPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <Link href="/" className="text-sm text-slate-500 hover:text-slate-700">
+      <Link href="/" className="chalk-back">
         ← 返回首页
       </Link>
 
@@ -174,12 +175,12 @@ export default function LessonFlowPage() {
               return (
                 <li
                   key={s}
-                  className={`rounded-lg border px-3 py-2 text-sm ${
+                  className={`rounded-lg border-2 border-dashed px-3 py-2 text-sm ${
                     active
-                      ? "border-emerald-500 bg-emerald-50 font-semibold text-emerald-700"
+                      ? "chalk-yellow border-chalk-yellow/70 bg-chalk-yellow/10 font-semibold"
                       : passed
-                        ? "border-slate-200 bg-white text-slate-400 line-through"
-                        : "border-slate-200 bg-white text-slate-500"
+                        ? "border-chalk-50/20 text-chalk-600 line-through"
+                        : "border-chalk-50/25 text-chalk-400"
                   }`}
                 >
                   {STAGE_LABEL[s]}
@@ -187,31 +188,22 @@ export default function LessonFlowPage() {
               );
             })}
             {lesson.status === "reflected" && (
-              <li className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700">
+              <li className="chalk-green rounded-lg border-2 border-dashed border-chalk-green/60 bg-chalk-green/10 px-3 py-2 text-sm font-semibold">
                 ✓ 已完成反思
               </li>
             )}
           </ol>
           <div className="mt-4 space-y-2 text-sm">
-            <Link
-              href={`/prep/${id}/trace`}
-              className="block rounded-lg border border-slate-300 bg-white px-3 py-2 text-center hover:bg-slate-100"
-            >
+            <Link href={`/prep/${id}/trace`} className="chalk-btn-ghost block text-center">
               Agent 过程
             </Link>
             {lesson.packageJson != null && (
-              <Link
-                href={`/prep/${id}/package`}
-                className="block rounded-lg border border-slate-300 bg-white px-3 py-2 text-center hover:bg-slate-100"
-              >
+              <Link href={`/prep/${id}/package`} className="chalk-btn-ghost block text-center">
                 查看备课包
               </Link>
             )}
             {(lesson.status === "delivered" || lesson.status === "reflected") && (
-              <Link
-                href={`/prep/${id}/reflect`}
-                className="block rounded-lg border border-slate-300 bg-white px-3 py-2 text-center hover:bg-slate-100"
-              >
+              <Link href={`/prep/${id}/reflect`} className="chalk-btn-ghost block text-center">
                 录入课后结果
               </Link>
             )}
@@ -221,13 +213,13 @@ export default function LessonFlowPage() {
         {/* 右侧工作区 */}
         <section className="min-w-0 flex-1">
           {/* 输入摘要卡 */}
-          <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
-            <p className="font-semibold">
+          <div className="chalk-panel p-4 text-sm">
+            <p className="chalk-text font-chalk text-base font-bold text-chalk-50">
               {lesson.subject} {lesson.grade} {lesson.textbook} 《{lesson.title}》
             </p>
-            <p className="mt-1 whitespace-pre-line text-slate-600">{lesson.classDesc}</p>
+            <p className="mt-1 whitespace-pre-line text-chalk-200">{lesson.classDesc}</p>
             {lesson.classMemory && (
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-chalk-600">
                 班级记忆：{lesson.classMemory.className}（已关联）
               </p>
             )}
@@ -239,7 +231,7 @@ export default function LessonFlowPage() {
               <button
                 onClick={() => runStage(currentStage)}
                 disabled={!stageHasOutput && currentStage !== "diagnose"}
-                className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="chalk-btn-primary"
               >
                 运行 {STAGE_LABEL[currentStage]}
               </button>
@@ -252,26 +244,21 @@ export default function LessonFlowPage() {
               <EventCard key={idx} item={item} />
             ))}
             {running && (
-              <p className="animate-pulse text-sm text-slate-400">Agent 正在工作…</p>
+              <p className="animate-pulse text-sm text-chalk-400">Agent 正在工作…</p>
             )}
           </div>
 
           {/* confirm_required：教师回答后重跑 */}
           {lastConfirmReq && !running && !lastDone && (
-            <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
-              <p className="text-sm font-semibold text-amber-800">
-                Agent 需要补充信息：
-              </p>
-              <ul className="mt-2 list-disc pl-5 text-sm text-amber-800">
+            <div className="chalk-box-yellow mt-4 bg-board-950/50 p-4">
+              <p className="chalk-yellow text-sm font-semibold">Agent 需要补充信息：</p>
+              <ul className="mt-2 list-disc pl-5 text-sm text-chalk-200">
                 {lastConfirmReq.questions.map((q, i) => (
                   <li key={i}>{q}</li>
                 ))}
               </ul>
               {!answerMode ? (
-                <button
-                  onClick={() => setAnswerMode(true)}
-                  className="mt-3 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white"
-                >
+                <button onClick={() => setAnswerMode(true)} className="chalk-btn-primary mt-3">
                   回答并重新运行
                 </button>
               ) : (
@@ -280,7 +267,7 @@ export default function LessonFlowPage() {
                     value={answerText}
                     onChange={(e) => setAnswerText(e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-amber-300 px-3 py-2 text-sm"
+                    className="chalk-input"
                     placeholder="请回答上述问题"
                   />
                   <button
@@ -288,7 +275,7 @@ export default function LessonFlowPage() {
                       setAnswerMode(false);
                       runStage(currentStage, answerText);
                     }}
-                    className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white"
+                    className="chalk-btn-primary"
                   >
                     提交并重跑本阶段
                   </button>
@@ -299,17 +286,19 @@ export default function LessonFlowPage() {
 
           {/* error 事件 */}
           {hasError && !running && (
-            <div className="mt-4 rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
-              <p className="font-semibold">本阶段执行失败，请重试。</p>
+            <div className="chalk-box-pink mt-4 bg-board-950/50 p-4 text-sm">
+              <p className="chalk-pink font-semibold">本阶段执行失败，请重试。</p>
               {failCount >= 2 && (
-                <p className="mt-1">连续失败，请联系管理员：qinglan-prep@example.com</p>
+                <p className="mt-1 text-chalk-200">
+                  连续失败，请联系管理员：qinglan-prep@example.com
+                </p>
               )}
               <button
                 onClick={() => {
                   setFailCount((c) => c + 1);
                   runStage(currentStage);
                 }}
-                className="mt-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+                className="chalk-btn-primary mt-2"
               >
                 重试
               </button>
@@ -317,30 +306,24 @@ export default function LessonFlowPage() {
           )}
 
           {runError && (
-            <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+            <p className="chalk-box-pink mt-3 bg-board-950/50 px-3 py-2 text-sm text-chalk-pink">
               {runError}
             </p>
           )}
 
           {/* 阶段产物卡 + 确认按钮 */}
           {lastDone && !running && ["diagnose", "design", "generate"].includes(currentStage) && (
-            <div className="mt-4 rounded-xl border border-emerald-200 bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold text-emerald-700">阶段产物已定稿</p>
-              <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-                {JSON.stringify(lastDone.output, null, 2)}
-              </pre>
+            <div className="chalk-box-green mt-4 bg-board-950/50 p-4">
+              <p className="chalk-green text-sm font-semibold">阶段产物已定稿</p>
+              <div className="mt-2">
+                <StageOutputCard stage={currentStage} output={lastDone.output} />
+              </div>
               {!editMode ? (
                 <div className="mt-3 flex gap-3">
-                  <button
-                    onClick={() => confirmStage(currentStage)}
-                    className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-                  >
+                  <button onClick={() => confirmStage(currentStage)} className="chalk-btn-primary">
                     确认并进入下一步
                   </button>
-                  <button
-                    onClick={() => setEditMode(true)}
-                    className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700"
-                  >
+                  <button onClick={() => setEditMode(true)} className="chalk-btn-ghost">
                     提出修改
                   </button>
                 </div>
@@ -350,13 +333,10 @@ export default function LessonFlowPage() {
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     rows={3}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="chalk-input"
                     placeholder="输入修改意见，将注入下一阶段"
                   />
-                  <button
-                    onClick={() => confirmStage(currentStage)}
-                    className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white"
-                  >
+                  <button onClick={() => confirmStage(currentStage)} className="chalk-btn-primary">
                     带修改意见确认
                   </button>
                 </div>
@@ -367,16 +347,10 @@ export default function LessonFlowPage() {
           {/* delivered 出口 */}
           {(lesson.status === "delivered" || lesson.status === "reflected") && (
             <div className="mt-4 flex gap-3">
-              <Link
-                href={`/prep/${id}/package`}
-                className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
+              <Link href={`/prep/${id}/package`} className="chalk-btn-primary">
                 查看备课包
               </Link>
-              <Link
-                href={`/prep/${id}/reflect`}
-                className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700"
-              >
+              <Link href={`/prep/${id}/reflect`} className="chalk-btn-ghost">
                 录入课后结果
               </Link>
             </div>
@@ -390,19 +364,19 @@ export default function LessonFlowPage() {
 function EventCard({ item }: { item: StreamItem }) {
   if (item.kind === "thought") {
     return (
-      <details className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
-        <summary className="cursor-pointer font-medium text-slate-700">💭 思考</summary>
-        <p className="mt-2 whitespace-pre-line text-slate-600">{item.text}</p>
+      <details className="chalk-panel p-3 text-sm">
+        <summary className="chalk-yellow cursor-pointer font-medium">💭 思考</summary>
+        <p className="mt-2 whitespace-pre-line text-chalk-200">{item.text}</p>
       </details>
     );
   }
   if (item.kind === "tool_call") {
     return (
-      <details className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm">
-        <summary className="cursor-pointer font-medium text-sky-800">
+      <details className="chalk-box-blue bg-board-950/40 p-3 text-sm">
+        <summary className="chalk-blue cursor-pointer font-medium">
           🔧 调用工具 {item.name}
         </summary>
-        <pre className="mt-2 overflow-auto text-xs text-sky-700">
+        <pre className="mt-2 overflow-auto text-xs text-chalk-blue">
           {JSON.stringify(item.args, null, 2)}
         </pre>
       </details>
@@ -410,11 +384,11 @@ function EventCard({ item }: { item: StreamItem }) {
   }
   if (item.kind === "tool_result") {
     return (
-      <details className="rounded-lg border border-sky-200 bg-white p-3 text-sm">
-        <summary className="cursor-pointer font-medium text-sky-800">
+      <details className="chalk-box-blue bg-board-950/40 p-3 text-sm">
+        <summary className="chalk-blue cursor-pointer font-medium">
           📦 {item.name} 返回
         </summary>
-        <pre className="mt-2 max-h-48 overflow-auto text-xs text-slate-600">
+        <pre className="mt-2 max-h-48 overflow-auto text-xs text-chalk-200">
           {JSON.stringify(item.out, null, 2)}
         </pre>
       </details>
@@ -422,14 +396,14 @@ function EventCard({ item }: { item: StreamItem }) {
   }
   if (item.kind === "stage_done") {
     return (
-      <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+      <p className="chalk-green rounded-lg bg-chalk-green/10 px-3 py-2 text-sm font-medium">
         ✓ 阶段产物定稿
       </p>
     );
   }
   if (item.kind === "error") {
     return (
-      <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+      <p className="chalk-pink rounded-lg bg-chalk-pink/10 px-3 py-2 text-sm">
         ✗ 失败：{item.reason}
       </p>
     );

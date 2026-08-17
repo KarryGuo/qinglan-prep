@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { env } from "@/lib/env";
+import { resolveTeacherId } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,12 +15,6 @@ const CreateSchema = z.object({
   classMemoryId: z.string().optional(),
 });
 
-async function demoTeacherId(): Promise<string> {
-  const teacher = await prisma.teacher.findFirst({ where: { name: "王老师" } });
-  if (!teacher) throw new Error("种子教师不存在，请先运行 seed");
-  return teacher.id;
-}
-
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const parsed = CreateSchema.safeParse(body);
@@ -30,7 +24,10 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const teacherId = await demoTeacherId();
+  const teacherId = await resolveTeacherId();
+  if (!teacherId) {
+    return NextResponse.json({ error: "请先登录" }, { status: 401 });
+  }
   const lesson = await prisma.lesson.create({
     data: {
       teacherId,
@@ -47,11 +44,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  // 列表：返回当前教师的备课（演示模式）
-  const teacher = await prisma.teacher.findFirst({ where: { name: "王老师" } });
-  if (!teacher) return NextResponse.json({ items: [] });
+  // 列表：返回当前教师的备课（登录教师优先，演示模式回退种子教师）
+  const teacherId = await resolveTeacherId();
+  if (!teacherId) return NextResponse.json({ items: [] });
   const items = await prisma.lesson.findMany({
-    where: { teacherId: teacher.id },
+    where: { teacherId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

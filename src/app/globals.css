@@ -1,1 +1,288 @@
 @import "tailwindcss";
+
+@theme {
+  /* ===== 黑板粉笔主题 ===== */
+  /* 黑板：深绿板面 */
+  --color-board-950: #0d221b;
+  --color-board-900: #123127;
+  --color-board-800: #17402f;
+  --color-board-700: #1d4f3a;
+  --color-board-600: #256046;
+
+  /* 粉笔色 */
+  --color-chalk-50: #fbfaf6; /* 白粉笔 */
+  --color-chalk-200: #e8e6dc;
+  --color-chalk-400: #c9c6b8;
+  --color-chalk-600: #9a978a;
+
+  --color-chalk-yellow: #ffd95e;
+  --color-chalk-pink: #ff9eb5;
+  --color-chalk-blue: #8fd3ff;
+  --color-chalk-green: #a8e6a3;
+  --color-chalk-orange: #ffb36b;
+
+  /* 木框 */
+  --color-wood-500: #8a5a33;
+  --color-wood-600: #6f4522;
+  --color-wood-700: #57341a;
+
+  --font-chalk: "KaiTi", "STKaiti", "Kaiti SC", "DFKai-SB", cursive;
+  --font-body: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-board-900);
+  color: var(--color-chalk-50);
+}
+
+/* ===== 黑板板面：深绿渐变 + 粉笔灰噪点 + 擦痕 ===== */
+.board-surface {
+  background-color: var(--color-board-900);
+  background-image:
+    radial-gradient(ellipse 120% 90% at 50% -10%, rgba(37, 96, 70, 0.55), transparent 60%),
+    radial-gradient(ellipse 90% 70% at 85% 110%, rgba(23, 64, 47, 0.7), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 12% 70%, rgba(18, 49, 39, 0.8), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 粉笔擦痕（半透明白色涂抹） */
+.board-smudge {
+  position: relative;
+}
+.board-smudge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 30% 8% at 25% 30%, rgba(251, 250, 246, 0.045), transparent 70%),
+    radial-gradient(ellipse 22% 6% at 70% 62%, rgba(251, 250, 246, 0.035), transparent 70%),
+    radial-gradient(ellipse 40% 10% at 45% 85%, rgba(251, 250, 246, 0.04), transparent 70%);
+}
+
+/* ===== 粉笔字效果：轻微发光 + 颗粒 ===== */
+.chalk-text {
+  text-shadow:
+    0 0 1px rgba(251, 250, 246, 0.4),
+    0 0 14px rgba(251, 250, 246, 0.12);
+}
+.chalk-yellow {
+  color: var(--color-chalk-yellow);
+  text-shadow: 0 0 1px rgba(255, 217, 94, 0.5), 0 0 16px rgba(255, 217, 94, 0.18);
+}
+.chalk-pink {
+  color: var(--color-chalk-pink);
+  text-shadow: 0 0 1px rgba(255, 158, 181, 0.5), 0 0 16px rgba(255, 158, 181, 0.18);
+}
+.chalk-blue {
+  color: var(--color-chalk-blue);
+  text-shadow: 0 0 1px rgba(143, 211, 255, 0.5), 0 0 16px rgba(143, 211, 255, 0.18);
+}
+.chalk-green {
+  color: var(--color-chalk-green);
+  text-shadow: 0 0 1px rgba(168, 230, 163, 0.5), 0 0 16px rgba(168, 230, 163, 0.18);
+}
+.chalk-orange {
+  color: var(--color-chalk-orange);
+  text-shadow: 0 0 1px rgba(255, 179, 107, 0.5), 0 0 16px rgba(255, 179, 107, 0.18);
+}
+
+/* ===== 手绘粉笔虚线框 ===== */
+.chalk-box {
+  border: 2px dashed rgba(251, 250, 246, 0.55);
+  border-radius: 14px 18px 12px 16px / 16px 12px 18px 14px;
+}
+.chalk-box-yellow {
+  border: 2px dashed rgba(255, 217, 94, 0.6);
+  border-radius: 16px 12px 18px 14px / 12px 18px 14px 16px;
+}
+.chalk-box-blue {
+  border: 2px dashed rgba(143, 211, 255, 0.55);
+  border-radius: 12px 16px 14px 18px / 18px 14px 16px 12px;
+}
+.chalk-box-pink {
+  border: 2px dashed rgba(255, 158, 181, 0.55);
+  border-radius: 18px 14px 16px 12px / 14px 16px 12px 18px;
+}
+.chalk-box-green {
+  border: 2px dashed rgba(168, 230, 163, 0.55);
+  border-radius: 14px 18px 12px 16px / 16px 12px 18px 14px;
+}
+
+/* ===== 粉笔下划线（手绘波浪） ===== */
+.chalk-underline {
+  position: relative;
+  display: inline-block;
+}
+.chalk-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 6px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='8' viewBox='0 0 120 8'%3E%3Cpath d='M2 5 Q 20 2, 40 5 T 80 5 T 118 4' fill='none' stroke='%23ffd95e' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 120px 8px;
+}
+
+/* ===== 入场动画 ===== */
+@keyframes chalk-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.97);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.chalk-pop {
+  animation: chalk-pop 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 缓慢旋转的粉笔圆环（飞轮） */
+@keyframes slow-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.slow-spin {
+  animation: slow-spin 60s linear infinite;
+}
+
+/* 粉笔字浮现（描边感） */
+@keyframes chalk-fade {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+.chalk-fade {
+  animation: chalk-fade 0.9s ease-out both;
+}
+
+/* 悬浮卡片：轻微抬升 + 粉笔光晕 */
+.chalk-card {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s, border-color 0.35s;
+}
+.chalk-card:hover {
+  transform: translateY(-7px) rotate(-0.4deg);
+  box-shadow: 0 22px 50px -20px rgba(0, 0, 0, 0.6);
+}
+
+/* 木框（黑板边框） */
+.wood-frame {
+  background: linear-gradient(135deg, var(--color-wood-500), var(--color-wood-700));
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.18),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.4),
+    0 10px 30px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* 粉笔槽 */
+.chalk-tray {
+  background: linear-gradient(180deg, var(--color-wood-600), var(--color-wood-700));
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45);
+}
+
+/* 手绘箭头（SVG 背景） */
+.chalk-arrow {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='24' viewBox='0 0 60 24'%3E%3Cpath d='M2 12 Q 25 8, 48 12 M 40 5 L 52 12 L 40 19' fill='none' stroke='%23fbfaf6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' opacity='0.7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* 竖排文字 */
+.vertical-rl {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.4em;
+}
+
+/* ===== 表单控件：粉笔风格 ===== */
+.chalk-input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1.5px dashed rgba(251, 250, 246, 0.35);
+  background: rgba(13, 34, 27, 0.5);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.875rem;
+  color: var(--color-chalk-50);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+.chalk-input::placeholder {
+  color: rgba(201, 198, 184, 0.45);
+}
+.chalk-input:focus {
+  border-color: rgba(255, 217, 94, 0.7);
+  background: rgba(13, 34, 27, 0.75);
+}
+.chalk-input option {
+  background: var(--color-board-900);
+  color: var(--color-chalk-50);
+}
+.chalk-input:disabled {
+  opacity: 0.5;
+}
+
+.chalk-btn-primary {
+  border-radius: 8px;
+  background: var(--color-chalk-yellow);
+  padding: 0.7rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-board-950);
+  box-shadow: 0 8px 24px -6px rgba(255, 217, 94, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+}
+.chalk-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px -6px rgba(255, 217, 94, 0.5);
+}
+.chalk-btn-primary:disabled {
+  opacity: 0.5;
+  transform: none;
+}
+
+.chalk-btn-ghost {
+  border-radius: 8px;
+  border: 2px dashed rgba(251, 250, 246, 0.5);
+  padding: 0.7rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-chalk-50);
+  transition: border-color 0.2s, background 0.2s;
+}
+.chalk-btn-ghost:hover {
+  border-color: rgba(251, 250, 246, 0.85);
+  background: rgba(251, 250, 246, 0.06);
+}
+
+/* 粉笔面板（内容卡片） */
+.chalk-panel {
+  border: 2px dashed rgba(251, 250, 246, 0.3);
+  border-radius: 14px 18px 12px 16px / 16px 12px 18px 14px;
+  background: rgba(13, 34, 27, 0.45);
+}
+
+/* 返回链接 */
+.chalk-back {
+  font-size: 0.875rem;
+  color: var(--color-chalk-600);
+  transition: color 0.2s;
+}
+.chalk-back:hover {
+  color: var(--color-chalk-yellow);
+}

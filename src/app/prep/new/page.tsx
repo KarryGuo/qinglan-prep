@@ -27,7 +27,7 @@ function NewLessonForm() {
   const [textbook] = useState("统编版");
   const [title, setTitle] = useState("");
   const [classDesc, setClassDesc] = useState("");
-  const [className, setClassName] = useState("三年级 2 班");
+  const [classes, setClasses] = useState<{ id: string; className: string }[]>([]);
   const [memoryId, setMemoryId] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -37,10 +37,14 @@ function NewLessonForm() {
       .then((r) => r.json())
       .then((d) => setNodes(d.items ?? []))
       .catch(() => setError("教材节点加载失败，请刷新重试"));
-    // 默认班级记忆（演示模式取种子班级）
-    fetch("/api/class-memory/default")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d?.id && setMemoryId(d.id))
+    // 当前教师的班级列表，默认选中第一个
+    fetch("/api/class-memory")
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => {
+        const items = d.items ?? [];
+        setClasses(items);
+        if (items.length > 0) setMemoryId(items[0].id);
+      })
       .catch(() => {});
   }, []);
 
@@ -94,43 +98,37 @@ function NewLessonForm() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
-      <Link href="/" className="text-sm text-slate-500 hover:text-slate-700">
+      <Link href="/" className="chalk-back">
         ← 返回首页
       </Link>
-      <h1 className="mt-4 text-2xl font-bold">新建备课</h1>
-      <p className="mt-1 text-sm text-slate-500">
+      <h1 className="chalk-text font-chalk mt-5 text-3xl font-bold text-chalk-50">
+        新建备课
+      </h1>
+      <p className="mt-2 text-sm text-chalk-400">
         填写课题四要素与学情描述，Agent 将从学情诊断开始。
       </p>
 
-      <div className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="chalk-panel mt-6 space-y-4 p-6">
         <div className="grid grid-cols-2 gap-4">
           <label className="block text-sm">
-            <span className="font-medium text-slate-700">学科</span>
-            <input
-              value={subject}
-              disabled
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-500"
-            />
+            <span className="font-medium text-chalk-200">学科</span>
+            <input value={subject} disabled className="chalk-input mt-1" />
           </label>
           <label className="block text-sm">
-            <span className="font-medium text-slate-700">教材版本</span>
-            <input
-              value={textbook}
-              disabled
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-500"
-            />
+            <span className="font-medium text-chalk-200">教材版本</span>
+            <input value={textbook} disabled className="chalk-input mt-1" />
           </label>
         </div>
 
         <label className="block text-sm">
-          <span className="font-medium text-slate-700">年级</span>
+          <span className="font-medium text-chalk-200">年级</span>
           <select
             value={grade}
             onChange={(e) => {
               setGrade(e.target.value);
               setTitle("");
             }}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+            className="chalk-input mt-1"
           >
             {gradeOptions.map((g) => (
               <option key={g} value={g}>
@@ -141,11 +139,11 @@ function NewLessonForm() {
         </label>
 
         <label className="block text-sm">
-          <span className="font-medium text-slate-700">课题</span>
+          <span className="font-medium text-chalk-200">课题</span>
           <select
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+            className="chalk-input mt-1"
           >
             <option value="">请选择课题</option>
             {titleOptions.map((n) => (
@@ -157,27 +155,43 @@ function NewLessonForm() {
         </label>
 
         <label className="block text-sm">
-          <span className="font-medium text-slate-700">班级</span>
-          <input
-            value={className}
-            onChange={(e) => setClassName(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-          />
+          <span className="font-medium text-chalk-200">班级（关联学情记忆）</span>
+          <select
+            value={memoryId}
+            onChange={(e) => setMemoryId(e.target.value)}
+            className="chalk-input mt-1"
+          >
+            <option value="">不关联班级记忆</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.className}
+              </option>
+            ))}
+          </select>
+          {classes.length === 0 && (
+            <span className="mt-1 block text-xs text-chalk-600">
+              暂无班级，可前往{" "}
+              <Link href="/class" className="chalk-yellow underline">
+                我的班级
+              </Link>{" "}
+              新建；演示模式下可不关联直接体验。
+            </span>
+          )}
         </label>
 
         <label className="block text-sm">
-          <span className="font-medium text-slate-700">班级学情描述</span>
+          <span className="font-medium text-chalk-200">班级学情描述</span>
           <textarea
             value={classDesc}
             onChange={(e) => setClassDesc(e.target.value)}
             rows={5}
             placeholder="描述班级整体情况、已知薄弱点、课堂习惯等"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+            className="chalk-input mt-1"
           />
         </label>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="chalk-box-pink rounded-lg bg-board-950/60 px-3 py-2 text-sm text-chalk-pink">
             {error}
           </p>
         )}
@@ -185,7 +199,7 @@ function NewLessonForm() {
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="chalk-btn-primary w-full"
         >
           {submitting ? "创建中…" : "创建并开始备课"}
         </button>

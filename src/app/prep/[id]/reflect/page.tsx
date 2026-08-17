@@ -66,35 +66,37 @@ export default function ReflectPage() {
   }
 
   if (!lesson) {
-    return <main className="mx-auto max-w-3xl px-4 py-10 text-sm text-slate-500">加载中…</main>;
+    return <main className="mx-auto max-w-3xl px-4 py-10 text-sm text-chalk-400">加载中…</main>;
   }
 
   const reflection = lesson.reflectionJson;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
-      <Link href={`/prep/${id}`} className="text-sm text-slate-500 hover:text-slate-700">
+      <Link href={`/prep/${id}`} className="chalk-back">
         ← 返回流程
       </Link>
-      <h1 className="mt-3 text-2xl font-bold">课后反思 ·《{lesson.title}》</h1>
-      <p className="mt-1 text-sm text-slate-500">
+      <h1 className="chalk-text font-chalk mt-3 text-3xl font-bold text-chalk-50">
+        课后反思 ·《{lesson.title}》
+      </h1>
+      <p className="mt-2 text-sm text-chalk-400">
         填写随堂测各题正确率，Agent 将复盘"预测 vs 实际"并更新班级学情记忆。
       </p>
 
       {lesson.status !== "delivered" && lesson.status !== "reflected" && (
-        <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+        <p className="chalk-box-yellow mt-4 bg-chalk-yellow/5 px-3 py-2 text-sm text-chalk-200">
           请先完成备课流程（当前状态：{lesson.status}）。
         </p>
       )}
 
       {lesson.packageJson?.quiz && (lesson.status === "delivered" || lesson.status === "reflected") && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-700">随堂测正确率（%）</h2>
+        <div className="chalk-panel mt-6 p-6">
+          <h2 className="chalk-yellow font-chalk text-sm font-bold">随堂测正确率（%）</h2>
           <div className="mt-3 space-y-3">
             {lesson.packageJson.quiz.map((q, i) => (
               <div key={i} className="flex items-center gap-3 text-sm">
-                <span className="w-16 shrink-0 text-slate-500">第 {i + 1} 题</span>
-                <span className="min-w-0 flex-1 truncate text-slate-600" title={q.text}>
+                <span className="w-16 shrink-0 text-chalk-400">第 {i + 1} 题</span>
+                <span className="min-w-0 flex-1 truncate text-chalk-200" title={q.text}>
                   {q.text}
                 </span>
                 <input
@@ -103,22 +105,18 @@ export default function ReflectPage() {
                   max={100}
                   value={accuracies[i] ?? ""}
                   onChange={(e) => setAccuracies((a) => ({ ...a, [i]: e.target.value }))}
-                  className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-right"
+                  className="chalk-input w-24 text-right"
                   placeholder="0-100"
                 />
               </div>
             ))}
           </div>
-          <button
-            onClick={submit}
-            disabled={running}
-            className="mt-4 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-          >
+          <button onClick={submit} disabled={running} className="chalk-btn-primary mt-4 disabled:opacity-50">
             {running ? "Agent 复盘中…" : "提交并生成反思"}
           </button>
-          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="mt-2 text-sm text-chalk-pink">{error}</p>}
           {events.length > 0 && (
-            <ul className="mt-3 space-y-1 text-xs text-slate-500">
+            <ul className="mt-3 space-y-1 text-xs text-chalk-400">
               {events.map((e, i) => (
                 <li key={i}>
                   [{e.kind}] {e.text.slice(0, 120)}
@@ -131,61 +129,63 @@ export default function ReflectPage() {
 
       {reflection && (
         <div className="mt-6 space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-700">总体判断</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">{reflection.overall}</p>
+          <div className="chalk-panel p-6">
+            <h2 className="chalk-yellow font-chalk text-sm font-bold">总体判断</h2>
+            <p className="mt-2 text-sm leading-6 text-chalk-200">{reflection.overall}</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-700">逐知识点：预测 vs 实际</h2>
-            <table className="mt-2 w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                  <th className="py-2 pr-2">知识点</th>
-                  <th className="py-2 pr-2">预测</th>
-                  <th className="py-2 pr-2">实际</th>
-                  <th className="py-2">变化</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reflection.perKnowledgePoint.map((k, i) => (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="py-2 pr-2 font-medium text-slate-800">{k.name}</td>
-                    <td className="py-2 pr-2 text-slate-600">{k.predicted}</td>
-                    <td className="py-2 pr-2 text-slate-600">{k.actual}</td>
-                    <td className="py-2 text-slate-600">{k.delta}</td>
+          <div className="chalk-panel p-6">
+            <h2 className="chalk-yellow font-chalk text-sm font-bold">逐知识点：预测 vs 实际</h2>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-dashed border-chalk-50/30 text-left text-xs text-chalk-400">
+                    <th className="py-2 pr-2">知识点</th>
+                    <th className="py-2 pr-2">预测</th>
+                    <th className="py-2 pr-2">实际</th>
+                    <th className="py-2">变化</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {reflection.perKnowledgePoint.map((k, i) => (
+                    <tr key={i} className="border-b border-dashed border-chalk-50/15">
+                      <td className="py-2 pr-2 font-medium text-chalk-50">{k.name}</td>
+                      <td className="py-2 pr-2 text-chalk-300">{k.predicted}</td>
+                      <td className="py-2 pr-2 text-chalk-300">{k.actual}</td>
+                      <td className="chalk-blue py-2">{k.delta}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-700">下一课建议</h2>
-            <ul className="mt-2 list-disc pl-5 text-sm text-slate-600">
+          <div className="chalk-panel p-6">
+            <h2 className="chalk-yellow font-chalk text-sm font-bold">下一课建议</h2>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-chalk-200">
               {reflection.nextLessonSuggestions.map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
             </ul>
           </div>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6">
-            <h2 className="text-sm font-semibold text-emerald-800">记忆更新摘要</h2>
+          <div className="chalk-box-green bg-chalk-green/5 p-6">
+            <h2 className="chalk-green font-chalk text-sm font-bold">记忆更新摘要</h2>
             {reflection.memoryPatch.resolved.length > 0 && (
-              <p className="mt-2 text-sm text-emerald-700">
+              <p className="mt-2 text-sm text-chalk-200">
                 已解决弱点：{reflection.memoryPatch.resolved.join("、")}
               </p>
             )}
             {reflection.memoryPatch.newWeakPoints.length > 0 && (
-              <p className="mt-1 text-sm text-emerald-700">
+              <p className="mt-1 text-sm text-chalk-200">
                 新增弱点：
                 {reflection.memoryPatch.newWeakPoints
                   .map((w) => `${w.name}（severity ${w.severity}）`)
                   .join("、")}
               </p>
             )}
-            <Link href="/class" className="mt-3 inline-block text-sm font-medium text-emerald-700 underline">
+            <Link href="/class" className="chalk-green mt-3 inline-block text-sm font-medium underline">
               查看学情记忆页 →
             </Link>
           </div>
-          <p className="text-center text-xs text-slate-400">
+          <p className="text-center text-xs text-chalk-500">
             本内容供备课参考，教学决策由教师作出。
           </p>
         </div>

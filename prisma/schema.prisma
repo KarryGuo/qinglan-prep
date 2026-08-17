@@ -8,11 +8,16 @@ datasource db {
 }
 
 model Teacher {
-  id       String        @id @default(cuid())
-  name     String
-  prefs    Json?
-  lessons  Lesson[]
-  memories ClassMemory[]
+  id           String        @id @default(cuid())
+  name         String
+  email        String?       @unique
+  passwordHash String?
+  schoolStage  String? // 学段：小学 | 初中
+  subject      String? // 任教学科
+  grades       String? // 任教年级，逗号分隔，如"三年级,四年级"
+  prefs        Json?
+  lessons      Lesson[]
+  memories     ClassMemory[]
 }
 
 model ClassMemory {

@@ -11,13 +11,13 @@ const STAGE_LABEL: Record<string, string> = {
 };
 
 const KIND_META: Record<string, { label: string; cls: string }> = {
-  stage_start: { label: "阶段开始", cls: "border-slate-300 bg-slate-100 text-slate-600" },
-  thought: { label: "思考", cls: "border-violet-200 bg-violet-50 text-violet-700" },
-  tool_call: { label: "工具调用", cls: "border-sky-200 bg-sky-50 text-sky-700" },
-  tool_result: { label: "工具返回", cls: "border-sky-200 bg-white text-sky-700" },
-  confirm_required: { label: "请求补充", cls: "border-amber-300 bg-amber-50 text-amber-700" },
-  stage_done: { label: "定稿", cls: "border-emerald-300 bg-emerald-50 text-emerald-700" },
-  error: { label: "失败", cls: "border-red-300 bg-red-50 text-red-700" },
+  stage_start: { label: "阶段开始", cls: "border-chalk-50/30 bg-board-950/50 text-chalk-300" },
+  thought: { label: "思考", cls: "border-chalk-pink/40 bg-chalk-pink/5 text-chalk-pink" },
+  tool_call: { label: "工具调用", cls: "border-chalk-blue/40 bg-chalk-blue/5 text-chalk-blue" },
+  tool_result: { label: "工具返回", cls: "border-chalk-blue/30 bg-board-950/40 text-chalk-blue" },
+  confirm_required: { label: "请求补充", cls: "border-chalk-orange/50 bg-chalk-orange/5 text-chalk-orange" },
+  stage_done: { label: "定稿", cls: "border-chalk-green/50 bg-chalk-green/5 text-chalk-green" },
+  error: { label: "失败", cls: "border-chalk-pink/60 bg-chalk-pink/10 text-chalk-pink" },
 };
 
 export default async function TracePage({
@@ -36,7 +36,7 @@ export default async function TracePage({
 
   if (!lesson) {
     return (
-      <main className="mx-auto max-w-4xl px-4 py-10 text-sm text-slate-500">
+      <main className="mx-auto max-w-4xl px-4 py-10 text-sm text-chalk-400">
         课程不存在。
       </main>
     );
@@ -50,58 +50,57 @@ export default async function TracePage({
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link href={`/prep/${id}`} className="text-sm text-slate-500 hover:text-slate-700">
+          <Link href={`/prep/${id}`} className="chalk-back">
             ← 返回流程
           </Link>
-          <h1 className="mt-2 text-2xl font-bold">Agent 工作过程 ·《{lesson.title}》</h1>
+          <h1 className="chalk-text font-chalk mt-3 text-3xl font-bold text-chalk-50">
+            Agent 工作过程 ·《{lesson.title}》
+          </h1>
         </div>
-        <Link
-          href={`/prep/${id}/package`}
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
-        >
+        <Link href={`/prep/${id}/package`} className="chalk-btn-ghost">
           查看备课包
         </Link>
       </div>
 
       {/* 顶部统计条 */}
       <div className="mt-6 grid grid-cols-3 gap-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-sky-600">{toolCallCount}</p>
-          <p className="mt-1 text-xs text-slate-500">工具调用次数</p>
+        <div className="chalk-panel p-4 text-center">
+          <p className="chalk-blue font-chalk text-2xl font-bold">{toolCallCount}</p>
+          <p className="mt-1 text-xs text-chalk-400">工具调用次数</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-emerald-600">{durationSec}s</p>
-          <p className="mt-1 text-xs text-slate-500">总耗时</p>
+        <div className="chalk-panel p-4 text-center">
+          <p className="chalk-green font-chalk text-2xl font-bold">{durationSec}s</p>
+          <p className="mt-1 text-xs text-chalk-400">总耗时</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-amber-600">{lesson.citations.length}</p>
-          <p className="mt-1 text-xs text-slate-500">引用条数</p>
+        <div className="chalk-panel p-4 text-center">
+          <p className="chalk-yellow font-chalk text-2xl font-bold">{lesson.citations.length}</p>
+          <p className="mt-1 text-xs text-chalk-400">引用条数</p>
         </div>
       </div>
 
       {/* 时间线 */}
       <div className="mt-8">
         {lesson.events.length === 0 ? (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-chalk-400">
             暂无执行记录。回到流程页运行一个阶段后，这里会回放完整过程。
           </p>
         ) : (
-          <ol className="relative space-y-3 border-l-2 border-slate-200 pl-6">
+          <ol className="relative space-y-3 border-l-2 border-dashed border-chalk-50/25 pl-6">
             {lesson.events.map((e) => {
               const meta = KIND_META[e.kind] ?? KIND_META.thought;
               const payload = e.payload as Record<string, unknown>;
               const isStageStart = e.kind === "stage_start";
               return (
                 <li key={e.id} className="relative">
-                  <span className="absolute -left-[31px] top-2 h-2.5 w-2.5 rounded-full bg-slate-300" />
+                  <span className="absolute -left-[31px] top-2 h-2.5 w-2.5 rounded-full bg-chalk-50/40" />
                   {isStageStart ? (
-                    <div className="rounded-lg border border-slate-300 bg-slate-800 px-4 py-2 text-sm font-semibold text-white">
+                    <div className="chalk-yellow rounded-lg border-2 border-dashed border-chalk-yellow/60 bg-chalk-yellow/10 px-4 py-2 text-sm font-bold">
                       ▶ 阶段：{STAGE_LABEL[String(payload.stage)] ?? String(payload.stage)}
                     </div>
                   ) : (
-                    <div className={`rounded-lg border p-3 text-sm ${meta.cls}`}>
+                    <div className={`rounded-lg border border-dashed p-3 text-sm ${meta.cls}`}>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold">
                           {meta.label}
@@ -113,19 +112,19 @@ export default async function TracePage({
                         </span>
                       </div>
                       {e.kind === "thought" && (
-                        <p className="mt-1 whitespace-pre-line text-xs leading-5 text-slate-600">
+                        <p className="mt-1 whitespace-pre-line text-xs leading-5 text-chalk-300">
                           {String(payload.text ?? "")}
                         </p>
                       )}
                       {e.kind === "tool_call" && (
-                        <pre className="mt-1 overflow-auto text-xs text-slate-600">
+                        <pre className="mt-1 overflow-auto text-xs text-chalk-300">
                           {JSON.stringify(payload.args, null, 2)}
                         </pre>
                       )}
                       {e.kind === "tool_result" && (
                         <details className="mt-1">
                           <summary className="cursor-pointer text-xs">展开 JSON</summary>
-                          <pre className="mt-1 max-h-48 overflow-auto text-xs text-slate-600">
+                          <pre className="mt-1 max-h-48 overflow-auto text-xs text-chalk-300">
                             {JSON.stringify(payload.out, null, 2)}
                           </pre>
                         </details>
@@ -133,7 +132,7 @@ export default async function TracePage({
                       {e.kind === "stage_done" && (
                         <details className="mt-1">
                           <summary className="cursor-pointer text-xs">查看产物 JSON</summary>
-                          <pre className="mt-1 max-h-48 overflow-auto text-xs text-slate-600">
+                          <pre className="mt-1 max-h-48 overflow-auto text-xs text-chalk-300">
                             {JSON.stringify(payload.output, null, 2)}
                           </pre>
                         </details>
