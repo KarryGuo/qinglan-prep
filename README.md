@@ -1,4 +1,4 @@
-# 青蓝备课 Qinglan Prep
+# 青蓝备课 Qinglan
 
 **让每一节课，都有备而来** —— 从学情诊断开始的备课 Agent。
 
