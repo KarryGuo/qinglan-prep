@@ -109,6 +109,10 @@ body {
   border: 2px dashed rgba(168, 230, 163, 0.55);
   border-radius: 14px 18px 12px 16px / 16px 12px 18px 14px;
 }
+.chalk-box-orange {
+  border: 2px dashed rgba(255, 179, 107, 0.55);
+  border-radius: 16px 14px 12px 18px / 12px 16px 18px 14px;
+}
 
 /* ===== 粉笔下划线（手绘波浪） ===== */
 .chalk-underline {

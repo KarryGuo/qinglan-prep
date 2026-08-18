@@ -82,6 +82,24 @@ export function Header() {
               >
                 {me.teacher?.name}
               </span>
+              {me.teacher?.role !== "admin" && me.teacher?.verifyStatus === "pending" && (
+                <span
+                  className="chalk-box-orange rounded-md px-2 py-1 text-[10px] text-chalk-orange"
+                  title="管理员审核通过后获得认证标识"
+                >
+                  认证审核中
+                </span>
+              )}
+              {me.teacher?.role !== "admin" && me.teacher?.verifyStatus === "rejected" && (
+                <span className="chalk-box-pink rounded-md px-2 py-1 text-[10px] text-chalk-pink">
+                  认证被驳回
+                </span>
+              )}
+              {me.teacher?.role !== "admin" && me.teacher?.verifyStatus === "verified" && (
+                <span className="chalk-box-green rounded-md px-2 py-1 text-[10px] text-chalk-green">
+                  ✓ 已认证
+                </span>
+              )}
               <button
                 onClick={logout}
                 className="text-xs text-chalk-600 transition hover:text-chalk-50"
