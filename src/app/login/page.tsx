@@ -46,7 +46,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "登录失败");
-      router.push("/");
+      router.push(data.role === "admin" ? "/admin" : "/");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "登录失败");
@@ -251,6 +251,9 @@ export default function LoginPage() {
 
       <p className="mt-4 text-center text-xs text-chalk-600">
         演示模式下未登录也可体验示范课（使用内置演示账号数据）。
+      </p>
+      <p className="mt-2 text-center text-xs text-chalk-600">
+        管理员演示账号：admin@qinglan.edu.cn / admin123
       </p>
     </main>
   );

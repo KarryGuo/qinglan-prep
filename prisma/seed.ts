@@ -4,6 +4,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { scryptSync, randomBytes } from "node:crypto";
 import path from "node:path";
 import curriculum from "../src/data/curriculum.json";
 import textbook from "../src/data/textbook.json";
@@ -22,15 +23,51 @@ const adapter = new PrismaLibSQL(
 );
 const prisma = new PrismaClient({ adapter });
 
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 32).toString("hex");
+  return `${salt}:${hash}`;
+}
+
 async function main() {
+  // 管理员：存在即跳过（密码可用环境变量 ADMIN_PASSWORD 覆盖，默认 admin123）
+  const adminEmail = "admin@qinglan.edu.cn";
+  const admin = await prisma.teacher.findUnique({ where: { email: adminEmail } });
+  if (!admin) {
+    await prisma.teacher.create({
+      data: {
+        name: "管理员",
+        email: adminEmail,
+        passwordHash: hashPassword(process.env.ADMIN_PASSWORD || "admin123"),
+        role: "admin",
+        verifyStatus: "verified",
+      },
+    });
+    console.log("[seed] 创建管理员账号：", adminEmail);
+  } else {
+    await prisma.teacher.update({
+      where: { id: admin.id },
+      data: { role: "admin", verifyStatus: "verified" },
+    });
+    console.log("[seed] 管理员已存在，确保角色正确");
+  }
+
   // 教师：存在即跳过（幂等入口）
   let teacher = await prisma.teacher.findFirst({ where: { name: "王老师" } });
   if (!teacher) {
     teacher = await prisma.teacher.create({
-      data: { name: "王老师", prefs: { subject: "语文", defaultGrade: "三年级" } },
+      data: {
+        name: "王老师",
+        prefs: { subject: "语文", defaultGrade: "三年级" },
+        verifyStatus: "verified",
+      },
     });
     console.log("[seed] 创建教师：王老师");
   } else {
+    await prisma.teacher.update({
+      where: { id: teacher.id },
+      data: { verifyStatus: "verified" },
+    });
     console.log("[seed] 教师已存在，跳过");
   }
 

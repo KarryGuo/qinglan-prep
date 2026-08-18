@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
       schoolStage,
       subject,
       grades,
+      role: "teacher",
+      verifyStatus: "pending",
     },
   });
 

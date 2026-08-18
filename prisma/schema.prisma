@@ -15,6 +15,9 @@ model Teacher {
   schoolStage  String? // 学段：小学 | 初中
   subject      String? // 任教学科
   grades       String? // 任教年级，逗号分隔，如"三年级,四年级"
+  role         String        @default("teacher") // teacher | admin
+  verifyStatus String        @default("pending") // pending | verified | rejected
+  verifyNote   String? // 审核备注
   prefs        Json?
   lessons      Lesson[]
   memories     ClassMemory[]

@@ -77,3 +77,12 @@ export async function resolveTeacherId(): Promise<string | null> {
   }
   return null;
 }
+
+/** 校验当前会话是否为管理员，返回管理员记录或 null。 */
+export async function resolveAdmin() {
+  const sid = await sessionTeacherId();
+  if (!sid) return null;
+  const admin = await prisma.teacher.findUnique({ where: { id: sid } });
+  if (!admin || admin.role !== "admin") return null;
+  return admin;
+}

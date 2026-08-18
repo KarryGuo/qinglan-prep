@@ -12,6 +12,8 @@ type Me = {
     schoolStage: string | null;
     subject: string | null;
     grades: string | null;
+    role?: string;
+    verifyStatus?: string;
   };
 };
 
@@ -62,6 +64,14 @@ export function Header() {
           </Link>
           {me === null ? null : me.loggedIn ? (
             <div className="flex items-center gap-2">
+              {me.teacher?.role === "admin" && (
+                <Link
+                  href="/admin"
+                  className="chalk-box-pink rounded-md px-3 py-1 text-xs font-semibold transition hover:bg-chalk-pink/10"
+                >
+                  管理后台
+                </Link>
+              )}
               <span
                 className="chalk-box-yellow rounded-md px-3 py-1 text-xs font-medium text-chalk-yellow"
                 title={

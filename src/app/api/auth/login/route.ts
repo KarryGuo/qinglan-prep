@@ -30,7 +30,12 @@ export async function POST(req: NextRequest) {
   }
 
   const token = createSessionToken(teacher.id);
-  const res = NextResponse.json({ id: teacher.id, name: teacher.name });
+  const res = NextResponse.json({
+    id: teacher.id,
+    name: teacher.name,
+    role: teacher.role,
+    verifyStatus: teacher.verifyStatus,
+  });
   res.cookies.set({ ...sessionCookieOptions, value: token });
   return res;
 }

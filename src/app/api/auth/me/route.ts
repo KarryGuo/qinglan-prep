@@ -19,6 +19,8 @@ export async function GET() {
       schoolStage: true,
       subject: true,
       grades: true,
+      role: true,
+      verifyStatus: true,
     },
   });
   if (!teacher) {

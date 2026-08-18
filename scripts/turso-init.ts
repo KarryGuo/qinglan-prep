@@ -37,6 +37,22 @@ async function main() {
   }
   console.log(`[db-init] 已确保 ${statements.length} 条建表语句生效`);
 
+  // 增量列（对已存在的旧表补列，SQLite ALTER TABLE ADD COLUMN 幂等处理）
+  const addColumns: [string, string, string][] = [
+    // [表名, 列名, 列定义]
+    ["Teacher", "role", "TEXT NOT NULL DEFAULT 'teacher'"],
+    ["Teacher", "verifyStatus", "TEXT NOT NULL DEFAULT 'pending'"],
+    ["Teacher", "verifyNote", "TEXT"],
+  ];
+  for (const [table, column, def] of addColumns) {
+    const info = await client.execute(`PRAGMA table_info(${table})`);
+    const exists = info.rows.some((r) => r.name === column);
+    if (!exists) {
+      await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+      console.log(`[db-init] ${table} 新增列 ${column}`);
+    }
+  }
+
   const tables = await client.execute(
     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
   );
