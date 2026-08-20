@@ -1,8 +1,13 @@
 import { env } from "./env";
 
+/** 多模态内容分片：文本或图片（dataURL / 公网 URL）。 */
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
 export type ChatMessage =
   | { role: "system"; content: string }
-  | { role: "user"; content: string }
+  | { role: "user"; content: string | ContentPart[] }
   | { role: "assistant"; content: string | null; tool_calls?: ToolCall[] }
   | { role: "tool"; tool_call_id: string; content: string };
 
@@ -32,9 +37,11 @@ export async function chat(opts: {
   tools?: ToolDef[];
   tool_choice?: "auto" | "none";
   temperature?: number;
+  /** 覆盖默认文本模型（如视觉模型 VLM_MODEL） */
+  model?: string;
 }): Promise<ChatResponse> {
   const body: Record<string, unknown> = {
-    model: env.LLM_MODEL,
+    model: opts.model ?? env.LLM_MODEL,
     messages: opts.messages,
     temperature: opts.temperature ?? 0.4,
   };

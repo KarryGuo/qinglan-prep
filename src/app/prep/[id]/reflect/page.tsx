@@ -22,7 +22,8 @@ export default function ReflectPage() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState<{ kind: string; text: string }[]>([]);
-  const [csvHint, setCsvHint] = useState("");
+  const [inputHint, setInputHint] = useState("");
+  const [ocrBusy, setOcrBusy] = useState(false);
 
   useEffect(() => {
     fetch(`/api/lessons/${id}`)
@@ -45,15 +46,32 @@ export default function ReflectPage() {
       .catch((e) => setError(e instanceof Error ? e.message : "加载失败"));
   }, [id]);
 
+  /** 按题号回填正确率（CSV 与照片识别共用），教师核对后提交。 */
+  function applyScores(entries: { no: number; pct: number }[], sourceName: string) {
+    const next: Record<number, string> = { ...accuracies };
+    let filled = 0;
+    for (const { no, pct } of entries) {
+      if (no >= 1 && no <= (lesson?.packageJson?.quiz?.length ?? 0)) {
+        next[no - 1] = String(pct);
+        filled++;
+      }
+    }
+    setAccuracies(next);
+    setInputHint(
+      filled > 0
+        ? `已从「${sourceName}」回填 ${filled} 题正确率，请核对后提交`
+        : `「${sourceName}」中没有匹配到有效题目，未回填`
+    );
+  }
+
   /**
-   * 解析成绩 CSV（表头需含"题号"与"正确率"列，与 Agent 的 parse_scores 工具同一规则），
-   * 按题号自动回填正确率输入框，教师核对后提交。
+   * 解析成绩 CSV（表头需含"题号"与"正确率"列，与 Agent 的 parse_scores 工具同一规则）。
    * 正确率支持 "55%"、"55"、"0.55" 三种写法。
    */
   function parseCsvAndFill(text: string, fileName: string) {
     const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     if (lines.length < 2) {
-      setCsvHint(`「${fileName}」为空或缺少数据行，未回填`);
+      setInputHint(`「${fileName}」为空或缺少数据行，未回填`);
       return;
     }
     const split = (l: string) => l.split(/[,，\t]/).map((s) => s.trim());
@@ -61,11 +79,10 @@ export default function ReflectPage() {
     const qIdx = header.findIndex((h) => h.includes("题号"));
     const rIdx = header.findIndex((h) => h.includes("正确率"));
     if (qIdx < 0 || rIdx < 0) {
-      setCsvHint(`「${fileName}」表头需包含"题号"与"正确率"两列，未回填`);
+      setInputHint(`「${fileName}」表头需包含"题号"与"正确率"两列，未回填`);
       return;
     }
-    const next: Record<number, string> = { ...accuracies };
-    let filled = 0;
+    const entries: { no: number; pct: number }[] = [];
     for (const line of lines.slice(1)) {
       const cells = split(line);
       const no = parseInt(cells[qIdx]?.replace(/[^0-9]/g, ""), 10);
@@ -74,17 +91,9 @@ export default function ReflectPage() {
       if (!Number.isFinite(no) || !Number.isFinite(val)) continue;
       // 归一化：0-1 的小数视为比例（0.55 → 55），其余按百分数取值并截到 0-100
       const pct = val <= 1 && raw.includes(".") ? Math.round(val * 100) : Math.min(100, Math.max(0, Math.round(val)));
-      if (no >= 1 && no <= (lesson?.packageJson?.quiz?.length ?? 0)) {
-        next[no - 1] = String(pct);
-        filled++;
-      }
+      entries.push({ no, pct });
     }
-    setAccuracies(next);
-    setCsvHint(
-      filled > 0
-        ? `已从「${fileName}」回填 ${filled} 题正确率，请核对后提交`
-        : `「${fileName}」中没有匹配到有效题目，未回填`
-    );
+    applyScores(entries, fileName);
   }
 
   async function onCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -93,6 +102,60 @@ export default function ReflectPage() {
     if (!file) return;
     const text = await file.text();
     parseCsvAndFill(text, file.name);
+  }
+
+  /** 读取图片并压缩为最长边 1600px 的 JPEG，控制上传体积（手机原图常见 3-8MB）。 */
+  function compressImage(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("读取图片失败"));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("图片解析失败"));
+        img.onload = () => {
+          const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(reader.result as string); // 极端环境退回原图
+            return;
+          }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  /** 拍照/上传成绩单照片 → 视觉模型识别题号与正确率 → 自动回填。 */
+  async function onImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setOcrBusy(true);
+    setInputHint(`正在识别「${file.name}」…`);
+    try {
+      const image = await compressImage(file);
+      const res = await fetch(`/api/lessons/${id}/reflect/ocr`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.error ?? "识别失败，请手工填写");
+      applyScores(
+        (d.items ?? []).map((it: { no: number; accuracy: number }) => ({ no: it.no, pct: it.accuracy })),
+        `照片「${file.name}」`
+      );
+    } catch (err) {
+      setInputHint(err instanceof Error ? err.message : "识别失败，请手工填写");
+    } finally {
+      setOcrBusy(false);
+    }
   }
 
   async function submit() {
@@ -154,19 +217,32 @@ export default function ReflectPage() {
         <div className="chalk-panel mt-6 p-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="chalk-yellow font-chalk text-sm font-bold">随堂测正确率（%）</h2>
-            <label className="chalk-btn-ghost cursor-pointer text-xs">
-              上传成绩 CSV
-              <input
-                type="file"
-                accept=".csv,text/csv,text/plain"
-                className="hidden"
-                onChange={onCsvUpload}
-              />
-            </label>
+            <div className="flex items-center gap-2">
+              <label className={`chalk-btn-ghost cursor-pointer text-xs ${ocrBusy ? "pointer-events-none opacity-50" : ""}`}>
+                {ocrBusy ? "识别中…" : "拍照识别成绩"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={onImageUpload}
+                  disabled={ocrBusy}
+                />
+              </label>
+              <label className="chalk-btn-ghost cursor-pointer text-xs">
+                上传成绩 CSV
+                <input
+                  type="file"
+                  accept=".csv,text/csv,text/plain"
+                  className="hidden"
+                  onChange={onCsvUpload}
+                />
+              </label>
+            </div>
           </div>
-          {csvHint && <p className="mt-2 text-xs text-chalk-400">{csvHint}</p>}
+          {inputHint && <p className="mt-2 text-xs text-chalk-400">{inputHint}</p>}
           <p className="mt-1 text-xs text-chalk-500">
-            CSV 需含"题号"与"正确率"两列（如：1,55%），上传后自动回填，可手工核对修改。
+            支持三种录入方式：拍照/上传成绩单图片（自动识别）、上传 CSV（"题号"与"正确率"两列，如 1,55%）、手工填写。识别结果自动回填，请核对后提交。
           </p>
           <div className="mt-3 space-y-3">
             {lesson.packageJson.quiz.map((q, i) => (

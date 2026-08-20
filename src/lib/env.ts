@@ -26,5 +26,7 @@ export const env = {
   LLM_BASE_URL: process.env.LLM_BASE_URL ?? "https://api.deepseek.com",
   LLM_API_KEY: process.env.LLM_API_KEY ?? "",
   LLM_MODEL: process.env.LLM_MODEL ?? "deepseek-chat",
+  // 视觉模型（作业照片识别），需与 LLM_API_KEY 同服务且支持 image_url 输入
+  VLM_MODEL: process.env.VLM_MODEL ?? "qwen-vl-plus",
   DEMO_MODE: process.env.DEMO_MODE !== "false",
 };

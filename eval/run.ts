@@ -79,6 +79,7 @@ type Metrics = {
   memoryWritebackRate: string;
   toolCoverageRate: string;
   e2eCompletionRate: string;
+  ocrPassRate: string;
   assertionPassRate: string;
   avgStageSeconds: string;
 };
@@ -135,7 +136,7 @@ async function runStageWithEvents(
 // ---------- 主流程 ----------
 async function main() {
   console.log("[eval] 评测库：", EVAL_DB_URL);
-  console.log("[eval] 模型：", process.env.LLM_MODEL ?? "(默认)");
+  console.log("[eval] 模型：", process.env.LLM_MODEL ?? "(默认)", "| 视觉模型：", process.env.VLM_MODEL ?? "(默认)");
 
   // 动态 import：此时环境变量已定向评测库
   const { prisma } = await import("../src/lib/prisma");
@@ -166,6 +167,7 @@ async function main() {
   }
 
   const results: CaseResult[] = [];
+  const ocrResult: { assertions: Assertion[]; ms: number; model?: string } = { assertions: [], ms: 0 };
   const startedAt = Date.now();
 
   // ---------- 2. 逐用例执行四阶段闭环 ----------
@@ -497,8 +499,94 @@ async function main() {
 
   const totalMs = Date.now() - startedAt;
 
+  // ---------- 3. 多模态用例：成绩单照片识别（与生产 OCR 路由同一份提示词与解析器） ----------
+  {
+    console.log(`\n[eval] ===== 多模态：成绩单照片识别 =====`);
+    const fixturePath = path.resolve(__dirname, "fixtures/score-table.png");
+    if (!fs.existsSync(fixturePath)) {
+      assert(
+        ocrResult.assertions,
+        "ocr:fixture-exists",
+        "fixture 图片存在（eval/fixtures/score-table.png）",
+        false,
+        `未找到 ${fixturePath}`
+      );
+    } else {
+      const { chat } = await import("../src/lib/llm");
+      const { env } = await import("../src/lib/env");
+      const { OCR_PROMPT, extractItems } = await import("../src/lib/ocr");
+      ocrResult.model = env.VLM_MODEL;
+      const b64 = fs.readFileSync(fixturePath).toString("base64");
+      const t0 = Date.now();
+      try {
+        const res = await chat({
+          model: env.VLM_MODEL,
+          temperature: 0,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "image_url", image_url: { url: `data:image/png;base64,${b64}` } },
+                { type: "text", text: OCR_PROMPT },
+              ],
+            },
+          ],
+        });
+        ocrResult.ms = Date.now() - t0;
+        const items = extractItems(res.content ?? "");
+        assert(
+          ocrResult.assertions,
+          "ocr:parsed",
+          "照片识别输出可解析为结构化成绩（生产同款解析器）",
+          items !== null,
+          items ? "" : `模型原始输出：${(res.content ?? "").slice(0, 160)}`
+        );
+        if (items) {
+          assert(
+            ocrResult.assertions,
+            "ocr:count-4",
+            "识别出全部 4 道题的题号与正确率",
+            items.length === 4,
+            `实际 ${items.length} 条：${items.map((i) => `题${i.no}=${i.accuracy}`).join("、")}`
+          );
+          const item3 = items.find((i) => i.no === 3);
+          assert(
+            ocrResult.assertions,
+            "ocr:decimal-normalized",
+            "小数比例归一化为百分比（0.62 → 62）",
+            item3?.accuracy === 62,
+            `题3 实际识别为 ${item3?.accuracy ?? "未识别"}`
+          );
+          assert(
+            ocrResult.assertions,
+            "ocr:range-valid",
+            "全部正确率落在 0-100 且题号为正整数",
+            items.every((i) => i.accuracy >= 0 && i.accuracy <= 100 && i.no >= 1),
+            ""
+          );
+        }
+        console.log(
+          `[eval] OCR 完成 耗时=${(ocrResult.ms / 1000).toFixed(1)}s 识别=${items?.length ?? 0} 条`
+        );
+      } catch (err) {
+        ocrResult.ms = Date.now() - t0;
+        const reason = err instanceof Error ? err.message.slice(0, 160) : "unknown";
+        assert(
+          ocrResult.assertions,
+          "ocr:parsed",
+          "照片识别输出可解析为结构化成绩（生产同款解析器）",
+          false,
+          `VLM 请求失败：${reason}`
+        );
+        console.log(`[eval] OCR 失败：${reason}`);
+      }
+    }
+    const ocrPassed = ocrResult.assertions.filter((a) => a.pass).length;
+    console.log(`[eval] OCR 断言：${ocrPassed}/${ocrResult.assertions.length} 通过`);
+  }
+
   // ---------- 4. 指标汇总 ----------
-  const allAssertions = results.flatMap((r) => r.assertions);
+  const allAssertions = [...results.flatMap((r) => r.assertions), ...ocrResult.assertions];
   const stageRuns = results.flatMap((r) =>
     (["diagnose", "design", "generate", "reflect"] as Stage[]).map((s) => r.stages[s]!)
   );
@@ -516,6 +604,7 @@ async function main() {
     memoryWritebackRate: pct(memoryAssertions.filter((a) => a.pass).length, memoryAssertions.length),
     toolCoverageRate: pct(toolAssertions.filter((a) => a.pass).length, toolAssertions.length),
     e2eCompletionRate: pct(e2eAssertions.filter((a) => a.pass).length, e2eAssertions.length),
+    ocrPassRate: pct(ocrResult.assertions.filter((a) => a.pass).length, ocrResult.assertions.length),
     assertionPassRate: pct(allAssertions.filter((a) => a.pass).length, allAssertions.length),
     avgStageSeconds: `${(stageRuns.reduce((s, r) => s + r.ms, 0) / stageRuns.length / 1000).toFixed(1)}s`,
   };
@@ -554,16 +643,29 @@ async function main() {
       runEventCount: r.runEventCount,
       assertions: r.assertions,
     })),
+    ocr: {
+      model: ocrResult.model ?? "(未执行)",
+      fixture: "eval/fixtures/score-table.png",
+      ms: ocrResult.ms,
+      assertions: ocrResult.assertions,
+    },
   };
   fs.mkdirSync(path.resolve(__dirname, "reports"), { recursive: true });
   const jsonPath = path.resolve(__dirname, "reports", `eval-${stamp}.json`);
   fs.writeFileSync(jsonPath, JSON.stringify(jsonReport, null, 2), "utf8");
 
-  const md = renderMarkdown(now, metrics, results, totalMs, {
-    curriculum: curriculum.length,
-    textbook: textbook.length,
-    questions: questions.length,
-  });
+  const md = renderMarkdown(
+    now,
+    metrics,
+    results,
+    ocrResult,
+    totalMs,
+    {
+      curriculum: curriculum.length,
+      textbook: textbook.length,
+      questions: questions.length,
+    }
+  );
   const mdPath = path.resolve(__dirname, "../docs/评测报告.md");
   fs.writeFileSync(mdPath, md, "utf8");
 
@@ -575,6 +677,7 @@ async function main() {
   console.log(`记忆写回正确率              ${metrics.memoryWritebackRate}`);
   console.log(`工具调用覆盖率              ${metrics.toolCoverageRate}`);
   console.log(`端到端完成率                ${metrics.e2eCompletionRate}`);
+  console.log(`多模态识别通过率            ${metrics.ocrPassRate}`);
   console.log(`断言总通过率                ${metrics.assertionPassRate}`);
   console.log(`平均阶段耗时                ${metrics.avgStageSeconds}`);
   console.log(`总耗时 ${(totalMs / 60000).toFixed(1)} 分钟`);
@@ -591,6 +694,7 @@ function renderMarkdown(
   now: Date,
   metrics: Metrics,
   results: CaseResult[],
+  ocrResult: { assertions: Assertion[]; ms: number; model?: string },
   totalMs: number,
   seedCounts: { curriculum: number; textbook: number; questions: number }
 ): string {
@@ -617,6 +721,7 @@ function renderMarkdown(
   lines.push(`| 记忆写回正确率 | ${metrics.memoryWritebackRate} | memoryPatch 合法性 + 记忆迁移断言（保留/生长/消退）通过比例 |`);
   lines.push(`| 工具调用覆盖率 | ${metrics.toolCoverageRate} | 各阶段提示词要求的工具在事件流中实际被调用的比例 |`);
   lines.push(`| 端到端完成率 | ${metrics.e2eCompletionRate} | 单用例四阶段（诊—设—生—思）连续完成的用例比例 |`);
+  lines.push(`| 多模态识别通过率 | ${metrics.ocrPassRate} | 成绩单照片识别（视觉模型）断言通过比例，与生产 OCR 路由同一份提示词与解析器 |`);
   lines.push(`| 断言总通过率 | ${metrics.assertionPassRate} | 全部可机检断言通过比例 |`);
   lines.push(`| 平均阶段耗时 | ${metrics.avgStageSeconds} | 单阶段端到端平均耗时 |`);
   lines.push("");
@@ -646,21 +751,36 @@ function renderMarkdown(
     lines.push("");
   }
 
+  // 多模态用例明细
+  lines.push(`### 多模态：成绩单照片识别`);
+  lines.push("");
+  lines.push(
+    `视觉模型 \`${ocrResult.model ?? "(未执行)"}\` 识别 \`eval/fixtures/score-table.png\`（模拟成绩表截图：4 题，含 0.62 小数写法），耗时 ${(ocrResult.ms / 1000).toFixed(1)}s。评测与生产 OCR 路由（\`/api/lessons/[id]/reflect/ocr\`）复用同一份提示词与解析器。`
+  );
+  lines.push("");
+  lines.push("| 断言 | 结果 | 说明 |");
+  lines.push("|---|---|---|");
+  for (const a of ocrResult.assertions) {
+    lines.push(`| ${a.desc} | ${a.pass ? "✓" : "✗"} | ${a.pass ? "—" : a.detail} |`);
+  }
+  lines.push("");
+
   lines.push("## 三、方法说明");
   lines.push("");
   lines.push("1. **测的是产品本身**：评测直接复用生产编排 `runStage`（同一份提示词模板、工具注册表、zod Schema 校验与持久化逻辑），不经过任何评测专用旁路。");
   lines.push("2. **断言全部可机检**：Schema 校验、课标引用存在性、工具调用（RunEvent 事件流）、记忆写回（ClassMemory 写回前后对比）均直接查库验证，无人工打分。");
   lines.push(`3. **独立评测库**：运行在 \`prisma/eval.db\`（本地 SQLite），与演示/生产数据完全隔离；知识库种子（课标 ${seedCounts.curriculum} 条 / 教材 ${seedCounts.textbook} 节 / 题目 ${seedCounts.questions} 道）与线上一致。`);
   lines.push("4. **记忆闭环覆盖三种迁移**：用例 A 验证弱点仍显著时记忆必须保留（不许凭空清除）；用例 B 验证新接手班级从空记忆生长新弱点；用例 C 验证弱点达标后正确消退并记入已解决。");
-  lines.push("5. **波动性说明**：LLM 输出具有随机性（temperature 0.4），多次运行的指标可能在小范围内波动；失败断言如实记录、不修改产物，报告可由任何人运行 `npm run eval` 复现。");
+  lines.push("5. **多模态链路同样直测产品**：照片识别用例调用与生产 OCR 路由完全相同的提示词（\`src/lib/ocr.ts\`）与解析器，fixture 图（4 题成绩表，含 0.62 小数写法）随仓库提交，任何人可复现。");
+  lines.push("6. **波动性说明**：LLM 输出具有随机性（temperature 0.4），多次运行的指标可能在小范围内波动；失败断言如实记录、不修改产物，报告可由任何人运行 `npm run eval` 复现。");
   lines.push("");
   lines.push("## 四、复现方式");
   lines.push("");
   lines.push("```bash");
-  lines.push("npm run eval   # 初始化评测库 → 执行 3 用例 × 4 阶段 → 生成本报告与 JSON 明细");
+  lines.push("npm run eval   # 初始化评测库 → 执行 3 用例 × 4 阶段 + 多模态照片识别 → 生成本报告与 JSON 明细");
   lines.push("```");
   lines.push("");
-  lines.push("前提：`.env` 中配置可用的 `LLM_API_KEY`；JSON 明细位于 `eval/reports/eval-<时间戳>.json`。");
+  lines.push("前提：`.env` 中配置可用的 `LLM_API_KEY`（多模态用例需同一服务支持视觉模型，默认 `qwen-vl-plus`，可用 `VLM_MODEL` 覆盖）；JSON 明细位于 `eval/reports/eval-<时间戳>.json`。");
   lines.push("");
   return lines.join("\n");
 }

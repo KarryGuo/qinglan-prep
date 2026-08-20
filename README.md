@@ -24,7 +24,7 @@ cp .env.example .env   # 填入 LLM_API_KEY 等
 # 3. 初始化数据库、种子数据并启动
 npx prisma db push && npm run seed && npm run dev
 
-# 4.（可选）运行 Agent 评测：3 用例 × 4 阶段，生成量化评测报告
+# 4.（可选）运行 Agent 评测：3 用例 × 4 阶段 + 多模态照片识别，生成量化评测报告
 npm run eval
 ```
 
@@ -36,7 +36,8 @@ npm run eval
 | `TURSO_AUTH_TOKEN` | Turso 访问令牌（本地文件库可留空） |
 | `LLM_BASE_URL` | OpenAI 兼容接口地址（默认通义千问 DashScope） |
 | `LLM_API_KEY` | 大模型 API 密钥 |
-| `LLM_MODEL` | 模型名（默认 `qwen-plus`） |
+| `LLM_MODEL` | 文本模型名（默认 `qwen-plus`） |
+| `VLM_MODEL` | 视觉模型名，用于课后反思成绩单照片识别（默认 `qwen-vl-plus`，需与 `LLM_API_KEY` 同服务） |
 | `DEMO_MODE` | 演示模式开关，默认 `true` |
 | `SESSION_SECRET` | 会话签名密钥，生产环境必须配置（≥16 位，`openssl rand -hex 32` 生成） |
 
