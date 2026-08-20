@@ -3,8 +3,11 @@ services:
     name: qinglan-prep
     runtime: node
     plan: free
-    buildCommand: npm install && npx prisma generate && npm run build
-    startCommand: npx tsx scripts/turso-init.ts && npx tsx prisma/seed.ts && npm run start
+    # 建表与种子放在构建期（每次部署执行一次，幂等）：
+    # 启动命令只跑 next start（约 1 秒就绪），免费版从休眠唤醒不再经历
+    # 1-3 分钟的远程建库流程，避免唤醒窗口健康检查超时导致的持续 503。
+    buildCommand: npm install && npx prisma generate && npm run build && npx tsx scripts/turso-init.ts && npx tsx prisma/seed.ts
+    startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
