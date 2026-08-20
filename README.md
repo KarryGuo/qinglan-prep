@@ -8,9 +8,7 @@
 
 ## 在线体验
 
-https://qinglan-prep.onrender.com
-
-> Render 免费档实例空闲约 15 分钟后会休眠，首次访问需等待约 1 分钟冷启动。
+推送到 main 后 GitHub Actions 自动构建 Docker 镜像，在 Sealos（或任意容器平台）拉起即可，见下方「部署」章节。
 
 ## 快速开始
 
@@ -40,6 +38,38 @@ npm run eval
 | `VLM_MODEL` | 视觉模型名，用于课后反思成绩单照片识别（默认 `qwen-vl-plus`，需与 `LLM_API_KEY` 同服务） |
 | `DEMO_MODE` | 演示模式开关，默认 `true` |
 | `SESSION_SECRET` | 会话签名密钥，生产环境必须配置（≥16 位，`openssl rand -hex 32` 生成） |
+
+## 部署
+
+推送 main 分支后，GitHub Actions 自动构建 Docker 镜像并发布到 GHCR（`ghcr.io/<owner>/qinglan-prep:latest`）。容器无状态，数据在外部 Turso，重启/迁移不丢数据。
+
+### Sealos（推荐）
+
+1. 打开 [cloud.sealos.io](https://cloud.sealos.io) 注册登录（支持 GitHub 账号）；
+2. 首次构建完成后，到 GitHub 个人页 → Packages → `qinglan-prep` → Package settings，将镜像可见性改为 **Public**（Sealos 免密拉取）；
+3. 进入「应用管理（App Launchpad）」→ 创建应用：
+   - 镜像：`ghcr.io/<owner>/qinglan-prep:latest`
+   - 容器端口：`3000`（HTTP）
+   - CPU / 内存：`0.5 核 / 512 MB` 起，实例数 1
+   - 环境变量：按上表逐条添加（`TURSO_*`、`LLM_*`、`VLM_MODEL`、`SESSION_SECRET`、`DEMO_MODE`）
+   - 高级设置（可选）：健康检查路径 `/api/health`
+4. 开启「外网访问」获得 HTTPS 域名；访问 `<域名>/api/health` 返回 `{"ok":true,"dbOk":true}` 即部署成功。
+
+### 任意 Docker 主机
+
+```bash
+docker build -t qinglan-prep .
+docker run -d -p 3000:3000 --env-file .env --name qinglan-prep qinglan-prep
+```
+
+### 数据库初始化（首次部署前，一次性，幂等）
+
+外部 Turso 库需建表并灌入种子：
+
+```bash
+npx tsx --env-file=.env scripts/turso-init.ts   # 建表 / 补列
+npx tsx --env-file=.env prisma/seed.ts          # 管理员 / 教师 / 课标 / 教材 / 题库
+```
 
 ## 架构概览
 

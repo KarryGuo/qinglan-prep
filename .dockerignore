@@ -1,0 +1,26 @@
+# 版本库与构建产物（镜像内不需要，且加快构建上下文传输）
+.git
+.github
+node_modules
+.next
+out
+build
+
+# 密钥绝不进入镜像（镜像将发布到公开仓库）
+.env
+.env.local
+.env.*.local
+
+# 本地/评测数据库与报告
+prisma/dev.db
+prisma/eval.db
+eval/reports
+
+# 大体积非运行时文件
+docs
+*.pdf
+*.pptx
+*.docx
+render.yaml
+README.md
+LICENSE
