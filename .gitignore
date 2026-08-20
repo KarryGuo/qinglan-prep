@@ -9,5 +9,7 @@ build/
 next-env.d.ts
 .DS_Store
 prisma/dev.db
+prisma/eval.db
+eval/reports/
 *_sse*.txt
 lesson_id.txt

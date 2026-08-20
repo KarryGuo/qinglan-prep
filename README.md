@@ -23,6 +23,9 @@ cp .env.example .env   # 填入 LLM_API_KEY 等
 
 # 3. 初始化数据库、种子数据并启动
 npx prisma db push && npm run seed && npm run dev
+
+# 4.（可选）运行 Agent 评测：3 用例 × 4 阶段，生成量化评测报告
+npm run eval
 ```
 
 环境变量（见 `.env.example`）：
@@ -35,6 +38,7 @@ npx prisma db push && npm run seed && npm run dev
 | `LLM_API_KEY` | 大模型 API 密钥 |
 | `LLM_MODEL` | 模型名（默认 `qwen-plus`） |
 | `DEMO_MODE` | 演示模式开关，默认 `true` |
+| `SESSION_SECRET` | 会话签名密钥，生产环境必须配置（≥16 位，`openssl rand -hex 32` 生成） |
 
 ## 架构概览
 
@@ -42,6 +46,7 @@ npx prisma db push && npm run seed && npm run dev
 - Agent 编排层：Plan-Execute-Reflect 循环，zod 运行时 Schema 校验，工具调用留痕（RunEvent）
 - 数据层：Turso（libSQL）+ Prisma + driver adapter
 - 接口层：REST + SSE 流式事件推送，IP 限流 10 次/分钟
+- 评测体系：`npm run eval` 一键复现，断言全部可机检，报告见 [docs/评测报告.md](docs/评测报告.md)
 
 详见 [docs/技术架构方案.md](docs/技术架构方案.md) 与 [docs/项目说明书.md](docs/项目说明书.md)。
 

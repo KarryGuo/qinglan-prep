@@ -47,15 +47,23 @@ export async function runStage(
       });
     }
 
-    let corrected = false;
-    for (let turn = 0; turn < MAX_TURNS; turn++) {
+    // 轮次预算管理与两类纠正（评测驱动改进）：
+    // 1. 检索预算感知收敛：模型可能陷入"反复检索不输出"的循环，
+    //    倒数第二轮注入收敛提示，最后一轮禁用工具强制输出；
+    // 2. 引用闭集纠正：模型自拟 curriculumRef（幻觉）时，纠正消息直接列出
+    //    全部可用 code，把开放式引用变为闭集选择；纠正轮不消耗预算。
+    let turn = 0;
+    let refRetried = false;
+    let schemaRetried = false;
+    while (turn < MAX_TURNS) {
+      const isLastTurn = turn === MAX_TURNS - 1;
       const res = await chat({
         messages,
         tools: TOOLS[stage],
-        tool_choice: "auto",
+        tool_choice: isLastTurn ? "none" : "auto",
       });
 
-      if (res.tool_calls?.length) {
+      if (res.tool_calls?.length && !isLastTurn) {
         messages.push({
           role: "assistant",
           content: res.content,
@@ -85,6 +93,13 @@ export async function runStage(
             content: JSON.stringify(out),
           });
         }
+        turn += 1;
+        if (turn === MAX_TURNS - 2) {
+          messages.push({
+            role: "user",
+            content: "检索预算即将用尽：请基于已获取的信息立即输出最终 JSON，不要再调用工具。",
+          });
+        }
         continue;
       }
 
@@ -105,21 +120,27 @@ export async function runStage(
             return;
           }
         }
-        // design：引用存在性检查，不存在则进入纠正轮
+        // design：引用存在性检查，不存在则闭集纠正（一次）
         if (stage === "design") {
           const refErrors = await validateDesignRefs(parsed.value as DesignOutput);
           if (refErrors.length) {
-            if (corrected) {
+            if (refRetried) {
               emit({ kind: "error", payload: { reason: "invalid_curriculum_ref" } });
               return;
             }
-            corrected = true;
+            refRetried = true;
+            const codes = await prisma.curriculumClause.findMany({
+              where: { subject: ctx.subject },
+              select: { code: true },
+            });
             messages.push({ role: "assistant", content: res.content });
             messages.push({
               role: "user",
-              content: `引用校验失败：\n${refErrors.join("\n")}\ncurriculumRef 必须使用 search_curriculum 返回的真实 code，请重新输出。`,
+              content: `引用校验失败：\n${refErrors.join("\n")}\n以下是可用的全部课标 code，curriculumRef 只能从中选择最贴切的（逐字复制）：\n${codes
+                .map((c) => `- ${c.code}`)
+                .join("\n")}\n请重新输出完整 JSON。`,
             });
-            continue;
+            continue; // 纠正轮不消耗预算
           }
         }
         await persist(lessonId, stage, parsed.value);
@@ -131,12 +152,12 @@ export async function runStage(
         return;
       }
 
-      // Reflect：一次纠正机会
-      if (corrected) {
+      // Schema 纠正（一次，不消耗预算）
+      if (schemaRetried) {
         emit({ kind: "error", payload: { reason: "schema_invalid" } });
         return;
       }
-      corrected = true;
+      schemaRetried = true;
       messages.push({ role: "assistant", content: res.content });
       messages.push({
         role: "user",
