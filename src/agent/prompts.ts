@@ -89,7 +89,8 @@ export function systemPrompt(stage: Stage, ctx: Record<string, string>): string 
     reflect: `本阶段任务：课后反思。
 工作步骤（Plan）：
 1. 调用 read_class_memory 读取当前班级记忆。
-2. 对照 diagnose 的预测与本次作业/随堂测实际正确率，输出 ReflectOutput JSON。
+2. 若课后结果为 CSV 文本（含"题号""正确率"列），先调用 parse_scores 解析为结构化成绩再对照分析。
+3. 对照 diagnose 的预测与本次作业/随堂测实际正确率，输出 ReflectOutput JSON。
 约束：
 - memoryPatch.resolved 只能来自当前记忆中已有的弱点名称（逐字一致）。
 - memoryPatch 与报告内容必须自洽。

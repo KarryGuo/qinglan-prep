@@ -22,6 +22,7 @@ export default function ReflectPage() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
   const [events, setEvents] = useState<{ kind: string; text: string }[]>([]);
+  const [csvHint, setCsvHint] = useState("");
 
   useEffect(() => {
     fetch(`/api/lessons/${id}`)
@@ -43,6 +44,56 @@ export default function ReflectPage() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : "加载失败"));
   }, [id]);
+
+  /**
+   * 解析成绩 CSV（表头需含"题号"与"正确率"列，与 Agent 的 parse_scores 工具同一规则），
+   * 按题号自动回填正确率输入框，教师核对后提交。
+   * 正确率支持 "55%"、"55"、"0.55" 三种写法。
+   */
+  function parseCsvAndFill(text: string, fileName: string) {
+    const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) {
+      setCsvHint(`「${fileName}」为空或缺少数据行，未回填`);
+      return;
+    }
+    const split = (l: string) => l.split(/[,，\t]/).map((s) => s.trim());
+    const header = split(lines[0]);
+    const qIdx = header.findIndex((h) => h.includes("题号"));
+    const rIdx = header.findIndex((h) => h.includes("正确率"));
+    if (qIdx < 0 || rIdx < 0) {
+      setCsvHint(`「${fileName}」表头需包含"题号"与"正确率"两列，未回填`);
+      return;
+    }
+    const next: Record<number, string> = { ...accuracies };
+    let filled = 0;
+    for (const line of lines.slice(1)) {
+      const cells = split(line);
+      const no = parseInt(cells[qIdx]?.replace(/[^0-9]/g, ""), 10);
+      const raw = cells[rIdx]?.replace("%", "").trim();
+      const val = parseFloat(raw);
+      if (!Number.isFinite(no) || !Number.isFinite(val)) continue;
+      // 归一化：0-1 的小数视为比例（0.55 → 55），其余按百分数取值并截到 0-100
+      const pct = val <= 1 && raw.includes(".") ? Math.round(val * 100) : Math.min(100, Math.max(0, Math.round(val)));
+      if (no >= 1 && no <= (lesson?.packageJson?.quiz?.length ?? 0)) {
+        next[no - 1] = String(pct);
+        filled++;
+      }
+    }
+    setAccuracies(next);
+    setCsvHint(
+      filled > 0
+        ? `已从「${fileName}」回填 ${filled} 题正确率，请核对后提交`
+        : `「${fileName}」中没有匹配到有效题目，未回填`
+    );
+  }
+
+  async function onCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // 允许重复选择同一文件
+    if (!file) return;
+    const text = await file.text();
+    parseCsvAndFill(text, file.name);
+  }
 
   async function submit() {
     if (!lesson?.packageJson?.quiz) return;
@@ -101,7 +152,22 @@ export default function ReflectPage() {
 
       {lesson.packageJson?.quiz && (lesson.status === "delivered" || lesson.status === "reflected") && (
         <div className="chalk-panel mt-6 p-6">
-          <h2 className="chalk-yellow font-chalk text-sm font-bold">随堂测正确率（%）</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="chalk-yellow font-chalk text-sm font-bold">随堂测正确率（%）</h2>
+            <label className="chalk-btn-ghost cursor-pointer text-xs">
+              上传成绩 CSV
+              <input
+                type="file"
+                accept=".csv,text/csv,text/plain"
+                className="hidden"
+                onChange={onCsvUpload}
+              />
+            </label>
+          </div>
+          {csvHint && <p className="mt-2 text-xs text-chalk-400">{csvHint}</p>}
+          <p className="mt-1 text-xs text-chalk-500">
+            CSV 需含"题号"与"正确率"两列（如：1,55%），上传后自动回填，可手工核对修改。
+          </p>
           <div className="mt-3 space-y-3">
             {lesson.packageJson.quiz.map((q, i) => (
               <div key={i} className="flex items-center gap-3 text-sm">

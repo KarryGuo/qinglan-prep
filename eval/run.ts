@@ -144,16 +144,18 @@ async function main() {
   const textbook = (await import("../src/data/textbook.json")).default;
   const questions = (await import("../src/data/questions.json")).default;
 
-  // ---------- 1. 种子数据（知识表存在即跳过；教师/记忆每轮新建） ----------
-  if ((await prisma.curriculumClause.count()) === 0) {
+  // ---------- 1. 种子数据（知识表每轮先清后灌，与当前 JSON 强一致；教师/记忆每轮新建） ----------
+  {
+    const prev = await prisma.curriculumClause.count();
+    await prisma.curriculumClause.deleteMany();
+    await prisma.textbookNode.deleteMany();
+    await prisma.question.deleteMany();
     await prisma.curriculumClause.createMany({ data: curriculum });
     await prisma.textbookNode.createMany({ data: textbook });
     await prisma.question.createMany({ data: questions });
     console.log(
-      `[eval] 灌入种子：课标 ${curriculum.length} 条 / 教材 ${textbook.length} 节 / 题目 ${questions.length} 道`
+      `[eval] 同步种子（${prev > 0 ? "重建" : "初次灌入"}）：课标 ${curriculum.length} 条 / 教材 ${textbook.length} 节 / 题目 ${questions.length} 道`
     );
-  } else {
-    console.log("[eval] 知识表已有数据，跳过灌入");
   }
 
   let teacher = await prisma.teacher.findFirst({ where: { name: "评测教师" } });
