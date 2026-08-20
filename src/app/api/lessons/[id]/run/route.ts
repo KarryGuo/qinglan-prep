@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { runStage } from "@/agent/orchestrator";
 import type { Stage } from "@/agent/schemas";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
+import { requireLessonOwner } from "@/lib/lesson-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,10 +34,9 @@ export async function POST(
   }
   const stage: Stage = parsed.data.stage;
 
-  const lesson = await prisma.lesson.findUnique({ where: { id } });
-  if (!lesson) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
-  }
+  // 资源归属校验：仅课程属主可执行，防止匿名/越权请求消耗 LLM 配额
+  const guard = await requireLessonOwner(id);
+  if (!guard.ok) return guard.response;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

@@ -25,8 +25,14 @@ export default function ReflectPage() {
 
   useEffect(() => {
     fetch(`/api/lessons/${id}`)
-      .then((r) => r.json())
-      .then((d: Lesson) => {
+      .then(async (r) => {
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          throw new Error(d.error ?? "加载失败");
+        }
+        return r.json() as Promise<Lesson>;
+      })
+      .then((d) => {
         setLesson(d);
         // 默认用 generate 产出的 quiz 初始化正确率输入
         if (d.packageJson?.quiz) {
@@ -35,7 +41,7 @@ export default function ReflectPage() {
           setAccuracies(init);
         }
       })
-      .catch(() => setError("加载失败"));
+      .catch((e) => setError(e instanceof Error ? e.message : "加载失败"));
   }, [id]);
 
   async function submit() {
@@ -66,7 +72,11 @@ export default function ReflectPage() {
   }
 
   if (!lesson) {
-    return <main className="mx-auto max-w-3xl px-4 py-10 text-sm text-chalk-400">加载中…</main>;
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-10 text-sm text-chalk-400">
+        {error || "加载中…"}
+      </main>
+    );
   }
 
   const reflection = lesson.reflectionJson;

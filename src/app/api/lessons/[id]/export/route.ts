@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { DesignOutput, GenerateOutput, DiagnoseOutput } from "@/agent/schemas";
+import { requireLessonOwner } from "@/lib/lesson-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +12,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  // 资源归属校验：备课包仅课程属主可导出
+  const guard = await requireLessonOwner(id);
+  if (!guard.ok) return guard.response;
+
   const lesson = await prisma.lesson.findUnique({
     where: { id },
     include: { citations: true },

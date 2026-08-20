@@ -77,7 +77,10 @@ export default function LessonFlowPage() {
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/lessons/${id}`);
-    if (!res.ok) throw new Error("课程不存在");
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error ?? "课程不存在");
+    }
     const data: Lesson = await res.json();
     setLesson(data);
     // 从 RunEvent 回放"最近一个已执行阶段"的历史事件
@@ -93,7 +96,9 @@ export default function LessonFlowPage() {
   }, [id]);
 
   useEffect(() => {
-    load().catch(() => setRunError("加载失败，请刷新页面"));
+    load().catch((e) =>
+      setRunError(e instanceof Error ? e.message : "加载失败，请刷新页面")
+    );
   }, [load]);
 
   async function runStage(stage: string, teacherNote?: string) {

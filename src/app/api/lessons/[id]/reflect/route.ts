@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { runStage } from "@/agent/orchestrator";
+import { requireLessonOwner } from "@/lib/lesson-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,10 +23,10 @@ export async function POST(
     return NextResponse.json({ error: "请填写作业结果" }, { status: 400 });
   }
 
-  const lesson = await prisma.lesson.findUnique({ where: { id } });
-  if (!lesson) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
-  }
+  // 资源归属校验：仅课程属主可执行课后反思
+  const guard = await requireLessonOwner(id);
+  if (!guard.ok) return guard.response;
+  const lesson = guard.lesson;
   if (lesson.status !== "delivered" && lesson.status !== "reflected") {
     return NextResponse.json(
       { error: "备课包尚未交付，不能进行课后反思" },

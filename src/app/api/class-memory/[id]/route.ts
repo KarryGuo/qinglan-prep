@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { resolveTeacherId } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  // 资源归属校验：班级学情记忆属教师私有数据，仅属主可读
+  const teacherId = await resolveTeacherId();
+  if (!teacherId) {
+    return NextResponse.json({ error: "请先登录" }, { status: 401 });
+  }
   const memory = await prisma.classMemory.findUnique({
     where: { id },
     include: {
@@ -27,6 +33,9 @@ export async function GET(
   });
   if (!memory) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+  if (memory.teacherId !== teacherId) {
+    return NextResponse.json({ error: "无权访问该班级" }, { status: 403 });
   }
   return NextResponse.json(memory);
 }

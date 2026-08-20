@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { resolveTeacherId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,8 @@ export default async function TracePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  // 归属校验：课程不存在 / 未登录 / 非本人课程一律 404，不泄露资源存在性
+  const teacherId = await resolveTeacherId();
   const lesson = await prisma.lesson.findUnique({
     where: { id },
     include: {
@@ -34,12 +38,8 @@ export default async function TracePage({
     },
   });
 
-  if (!lesson) {
-    return (
-      <main className="mx-auto max-w-4xl px-4 py-10 text-sm text-chalk-400">
-        课程不存在。
-      </main>
-    );
+  if (!lesson || !teacherId || lesson.teacherId !== teacherId) {
+    notFound();
   }
 
   const toolCallCount = lesson.events.filter((e) => e.kind === "tool_call").length;

@@ -11,8 +11,31 @@ import { env } from "./env";
 const COOKIE_NAME = "qp_session";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 天
 
+/** 开发环境兜底密钥的告警只输出一次 */
+let devSecretWarned = false;
+
+/**
+ * 会话签名密钥：必须配置独立的 SESSION_SECRET（≥16 位）。
+ * 不允许从 LLM_API_KEY 派生——密钥用途必须分离，模型密钥轮换不应导致全体会话失效。
+ * 生产环境缺失即抛错拒绝降级运行；开发环境回退固定开发密钥并告警，不阻断本地调试。
+ */
 function secret(): string {
-  return process.env.SESSION_SECRET || `qp-${env.LLM_API_KEY || "dev-secret"}`;
+  const configured = process.env.SESSION_SECRET?.trim();
+  if (configured && configured.length >= 16) {
+    return configured;
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "SESSION_SECRET 未配置或长度不足 16 位：请生成独立密钥（openssl rand -hex 32）并配置到环境变量"
+    );
+  }
+  if (!devSecretWarned) {
+    console.warn(
+      "[auth] SESSION_SECRET 未配置，开发环境使用固定开发密钥；生产环境必须配置（openssl rand -hex 32）"
+    );
+    devSecretWarned = true;
+  }
+  return "qp-dev-only-session-secret";
 }
 
 export function hashPassword(password: string): string {

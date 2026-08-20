@@ -21,3 +21,5 @@ services:
         value: qwen-plus
       - key: DEMO_MODE
         value: "true"
+      - key: SESSION_SECRET
+        sync: false

@@ -36,7 +36,8 @@ export default async function ClassDetailPage({
     },
   });
 
-  if (!memory || (teacherId && memory.teacherId !== teacherId)) {
+  // 归属校验：未登录（非演示模式）或非本人班级一律 404，与列表页行为一致
+  if (!memory || !teacherId || memory.teacherId !== teacherId) {
     notFound();
   }
 

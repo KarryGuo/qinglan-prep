@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { resolveTeacherId } from "@/lib/auth";
 import type { DesignOutput, GenerateOutput } from "@/agent/schemas";
 import { PrintToolbar } from "./print-toolbar";
 
@@ -18,8 +19,10 @@ export default async function PrintPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  // 归属校验：非属主访问与课程不存在同等处理，不泄露资源存在性
+  const teacherId = await resolveTeacherId();
   const lesson = await prisma.lesson.findUnique({ where: { id } });
-  if (!lesson || !lesson.packageJson) notFound();
+  if (!lesson || !lesson.packageJson || !teacherId || lesson.teacherId !== teacherId) notFound();
 
   const pkg = lesson.packageJson as GenerateOutput;
   const design = lesson.designJson as DesignOutput | null;

@@ -54,19 +54,30 @@ export default function PackagePage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [loadError, setLoadError] = useState("");
   const [tab, setTab] = useState<(typeof TABS)[number]>("教案");
   const [activeCite, setActiveCite] = useState<Citation[] | null>(null);
   const [activeTitle, setActiveTitle] = useState("");
 
   useEffect(() => {
     fetch(`/api/lessons/${id}`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          throw new Error(d.error ?? "加载失败");
+        }
+        return r.json() as Promise<Lesson>;
+      })
       .then(setLesson)
-      .catch(() => {});
+      .catch((e) => setLoadError(e instanceof Error ? e.message : "加载失败"));
   }, [id]);
 
   if (!lesson) {
-    return <main className="mx-auto max-w-5xl px-4 py-10 text-sm text-chalk-400">加载中…</main>;
+    return (
+      <main className="mx-auto max-w-5xl px-4 py-10 text-sm text-chalk-400">
+        {loadError || "加载中…"}
+      </main>
+    );
   }
   if (!lesson.packageJson) {
     return (

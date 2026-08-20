@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { resolveTeacherId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -120,14 +121,19 @@ function Flywheel() {
 }
 
 export default async function HomePage() {
-  // 找最近一节有执行记录的课，供"查看 Agent 工作过程"入口使用
+  // 找"属于当前教师"的最近一节有执行记录的课（匿名演示会话解析为种子教师），
+  // 避免入口指向他人课程触发越权拦截
   let traceLessonId: string | null = null;
   try {
-    const ev = await prisma.runEvent.findFirst({
-      orderBy: { createdAt: "desc" },
-      select: { lessonId: true },
-    });
-    traceLessonId = ev?.lessonId ?? null;
+    const teacherId = await resolveTeacherId();
+    if (teacherId) {
+      const ev = await prisma.runEvent.findFirst({
+        where: { lesson: { teacherId } },
+        orderBy: { createdAt: "desc" },
+        select: { lessonId: true },
+      });
+      traceLessonId = ev?.lessonId ?? null;
+    }
   } catch {
     /* 数据库未就绪时降级为不显示 trace 入口 */
   }
